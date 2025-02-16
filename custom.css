@@ -1,0 +1,7 @@
+
+/* Active Link */
+.nav-pills .nav-link.active {
+    background-color: gray !important; /* light gray background */
+    color: white !important; /* text color white */
+    border-radius: 0.25rem; /* rounded corners */
+}
