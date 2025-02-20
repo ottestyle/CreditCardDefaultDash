@@ -4,6 +4,8 @@ import kagglehub
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+import xgboost as xgb
 
 from dash import Dash, html, Input, Output, dcc
 import dash_bootstrap_components as dbc
@@ -21,25 +23,24 @@ os.chdir(os.environ["DEFAULT_OF_CREDIT_CARD_CLIENTS"])
 from data_processing import preprocess_data
 from evaluation import evaluate_model
 
+eval_dict = {}
+
 # Preprocess data
 df_default, X, Y = preprocess_data(path)
+df_default.columns = [x.lower().title() for x in df_default.columns]
 
 # Train and test sets (80/20 split)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
 
-# Models to be used and compared. Will include more models on a later stage
 models = {
     "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42), # Baseline model
-    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42)
+    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
+    "XGBoost": xgb.XGBClassifier(random_state=42, eval_metric="logloss"),
+    "Neural Network": MLPClassifier(random_state=42, max_iter=500)
 }
 
-eval_dict = {}
-
-# Evaluating models
 for model_name, model in models.items():
     eval_dict[model_name] = evaluate_model(model, X_train, X_test, y_train, y_test, model_name)
-
-df_default.columns = [x.lower().title() for x in df_default.columns]
 
 # List with continuous features
 continuous_var = ["Age", "Bill_Amt1", "Bill_Amt2", "Bill_Amt3", "Bill_Amt4", "Bill_Amt5", "Bill_Amt6", "Pay_Amt1",
@@ -111,13 +112,13 @@ app.layout = dbc.Container(
                                     active="exact", 
                                     style={"color": "black"}
                                     ),
-                        dbc.NavLink("Logistic Regression", 
-                                    href="/lr", 
+                        dbc.NavLink("Models", 
+                                    href="/models", 
                                     active="exact", 
                                     style={"color": "black"}
                                     ),
-                        dbc.NavLink("Random Forest", 
-                                    href="/rf", 
+                        dbc.NavLink("Model Comparison", 
+                                    href="/model-comparison", 
                                     active="exact", 
                                     style={"color": "black"}
                                     ),
@@ -210,6 +211,8 @@ def data_page_layout():
                     width=5)
 
                 ]),
+            
+            # Second row
             dbc.Row([
                 dbc.Col([
                     dcc.Graph(id="feature-hist")
@@ -220,6 +223,36 @@ def data_page_layout():
                     dcc.Graph(id="feature-scatterplot")
                     ],
                     width=5
+                    )
+                ])
+            ])
+
+#########################################
+# Define the layout for the Models page #
+#########################################
+def models_page_layout():
+    return dbc.Container(
+        fluid=True,
+        className="py-0",
+        children=[
+            
+            dbc.Row([
+                dbc.Col(
+                    
+                    dbc.Card(
+                        dbc.CardBody([
+                            
+                            dbc.Label("Choose model"),
+                            dcc.Dropdown(
+                                id="model-dropdown",
+                                options=list(models.keys()),
+                                value=list(models.keys())[0],
+                                className="mb-3"
+                                )
+                            ]),
+                        className="bg-light"
+                        ),
+                    width=2
                     )
                 ])
             ])
@@ -236,21 +269,19 @@ def display_page(pathname):
     This callback function returns the content for the page based on the URL pathname.
     - If the pathname is '/' it will be redirected to the data content.
     - If the pathname is "/data" the cleaned data content is shown.
-    - If the pathname is '/lr' the Logistic Regression content is shown.
-    - If the pathname is '/rf', the Random Forest content is shown.
+    - If the pathname is '/models' results of the models are shown.
+    - If the pathname is '/model-comparison', comparison of models is shown.
     - Otherwise, a 404 error message is displayed.
     """
     if pathname == "/":
         return dcc.Location(pathname="/data", id="redirect")
     elif pathname == "/data":
         return data_page_layout()
-    elif pathname == "/lr":
+    elif pathname == "/models":
+        return models_page_layout()
+    elif pathname == "/model-comparison":
         return html.Div([
-            html.H3("This is the LR Page", style={"textAlign": "center"})
-            ])
-    elif pathname == "/rf":
-        return html.Div([
-            html.H3("This is the RF Page", style={"textAlign": "center"})
+            html.H3("This is the model comparisons page", style={"textAlign": "center"})
             ])
     else:
         return html.Div([
