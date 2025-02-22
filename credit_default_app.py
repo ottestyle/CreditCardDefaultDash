@@ -1,13 +1,15 @@
 import os
 import kagglehub
+import pandas as pd
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 import xgboost as xgb
 
-from dash import Dash, html, Input, Output, dcc
+from dash import Dash, html, Input, Output, dcc, dash_table
 import dash_bootstrap_components as dbc
 import plotly.io as pio
 import plotly.express as px
@@ -84,7 +86,7 @@ app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[db
 app.layout = dbc.Container(
     fluid=True,
     children=[
-        # Keeps track of the URL so we can display different content based on it
+        # Keeps track of the URL so it can display different content
         dcc.Location(id="url", refresh=False),
         
         # Header row with H1 in the top left, gray background and white text
@@ -186,7 +188,7 @@ def data_page_layout():
                                     className="mb-3"
                                     ),
                                 
-                                dbc.Label("Scatterplot of a Continuous Feature"),
+                                dbc.Label("Scatterplot of Continuous Features"),
                                 dcc.Dropdown(
                                     id="feature-scat-dropdown",
                                     options=sorted(continuous_var),
@@ -247,12 +249,55 @@ def models_page_layout():
                                 id="model-dropdown",
                                 options=list(models.keys()),
                                 value=list(models.keys())[0],
+                                clearable=False,
                                 className="mb-3"
                                 )
                             ]),
                         className="bg-light"
                         ),
                     width=2
+                    ),
+                
+                dbc.Col([
+                    dash_table.DataTable(
+                        id="classification-report",
+                        columns=[],
+                        data=[],
+                        style_table={"border": "1px solid #ccc"},
+                        style_cell={
+                            "textAlign": "center",
+                            "border": "1px solid #ccc",
+                            "padding": "5px"},
+                        style_header={
+                            "backgroundColor": "gray",
+                            "color": "white",
+                            "border": "1px solid #ccc",
+                            "fontWeight": "bold"}
+                        ),
+                    html.Div(id="summary-class-report",
+                             style={"marginTop": "20px"})
+                    ],
+                    width=5
+                    ),
+                
+                dbc.Col([
+                    dcc.Graph(id="conf-matrix-plot")
+                    ],
+                    width=5
+                    )
+                ]),
+            
+            # Second row
+            dbc.Row([
+                dbc.Col([
+                    dcc.Graph(id="roc-curve-model")
+                    ],
+                    width={"size": 5, "offset": 2}
+                    ),
+                dbc.Col([
+                    dcc.Graph(id="feature-model")
+                    ],
+                    width=5
                     )
                 ])
             ])
@@ -383,6 +428,151 @@ def update_feature_scatterplot(selected_option):
     fig_scatter.data = fig_scatter.data[::-1]
 
     return fig_scatter
+
+###########################################################################
+# Models Page: Callbacks to update classification report and summary text #
+###########################################################################
+@app.callback(
+    Output("classification-report", "data"),
+    Output("classification-report", "columns"),
+    Output("summary-class-report", "children"),
+    Input("model-dropdown", "value")
+    )
+def update_class_report(selected_value):
+    
+    ##########################
+    # 1) Build the dataframe #
+    ##########################
+    df_class_report = pd.DataFrame(eval_dict[selected_value]["classification_report"])
+    
+    # Prepare for the DataTable
+    df_for_table = df_class_report.reset_index().rename(columns={"index": "Metric"})
+    df_for_table = round(df_for_table, 2)
+    
+    # Convert to DataTable format
+    table_data = df_for_table.to_dict("records")
+    table_columns = [{"name": col, "id": col} for col in df_for_table.columns]
+    
+    ###################
+    # 2) Summary text #
+    ###################
+    # transpose for row/column access
+    df_t = df_class_report.T 
+    accuracy = df_t.loc["accuracy", "precision"]
+    f1_class_0 = df_t.loc["0", "f1-score"]
+    f1_class_1 = df_t.loc["1", "f1-score"]
+    
+    if f1_class_0 > f1_class_1:
+        overall = "Overall, the model seems to handle Class 0 better than Class 1"
+    else:
+        overall = "Overall, the model seems to handle Class 1 better than Class 0"
+    
+    summary_text = dbc.Alert([
+        html.H4(f"Model: {selected_value}", className="alert-heading"),
+        html.P(f"Accuracy: {accuracy:.2f}"),
+        html.P(f"F1-Score (Class 0): {f1_class_0:.2f}"),
+        html.P(f"F1-Score (Class 1): {f1_class_1:.2f}"),
+        html.Hr(),
+        html.P(f"{overall}")
+        ],
+        color="info"
+        )
+    
+    #####################
+    # 3) Return outputs #
+    #####################
+    return table_data, table_columns, summary_text
+    
+####################################################
+# Models Page: Callback to update confusion matrix #
+####################################################
+@app.callback(
+    Output("conf-matrix-plot", "figure"),
+    Input("model-dropdown", "value")
+    )
+def update_conf_matrix(selected_value):
+    
+    fig_cm = px.imshow(eval_dict[selected_value]["confusion_matrix"],
+                       text_auto=True,
+                       labels=dict(x="Predicted", y="Actual"),
+                       x=["Not Default (pred)", "Default (pred)"], # Class labels on x-axis
+                       y=["Not Default (actual)", "Default (actual)"], # ... y-axis
+                       color_continuous_scale="Blues",
+                       title="Confusion Matrix")
+    
+    fig_cm.update_layout(coloraxis_showscale=False)
+    
+    # Ensures axis ticks appear only at 0 and 1, rather than fractional values
+    fig_cm.update_xaxes(tickmode="array", tickvals=[0, 1], ticktext=["0", "1"])
+    fig_cm.update_yaxes(tickmode="array", tickvals=[0, 1], ticktext=["0", "1"])
+    
+    return fig_cm
+
+#############################################
+# Models Page: Callback to update ROC Curve #
+#############################################
+@app.callback(
+    Output("roc-curve-model", "figure"),
+    Input("model-dropdown", "value")
+    )
+def update_roc_curve_model(selected_value):
+    
+    # False positive rate, true positive rate
+    fpr, tpr, thresholds = roc_curve(y_test, eval_dict[selected_value]["y_proba"])
+    score = eval_dict[selected_value]["auc_score"]
+    
+    fig_roc = px.area(x=fpr,
+                      y=tpr,
+                      title=f"ROC Curve (AUC={score:.4f})",
+                      labels=dict(
+                          x="False Positive Rate",
+                          y="True Positive Rate"
+                          ),
+                      width=800,
+                      height=500)
+    
+    fig_roc.add_shape(type="line",
+                      line=dict(dash="dash"),
+                      x0=0, x1=1, y0=0, y1=1)
+    
+    return fig_roc
+
+######################################################
+# Models Page: Callback to update feature importance #
+######################################################
+@app.callback(
+    Output("feature-model", "figure"),
+    Input("model-dropdown", "value")
+    )
+def update_feature_importance(selected_value):
+    
+    if selected_value == "Logistic Regression":
+        sorted_val = "Abs Coefficient"
+        y_vars = ["Abs Coefficient", "Odds Ratio"]
+    elif selected_value == "Neural Network":
+        sorted_val = "Importance Mean"
+        y_vars = ["Importance Mean", "Importance Std"]
+    else:
+        sorted_val = "Importance"
+        y_vars = "Importance"
+        
+    df_long = pd.melt(eval_dict[selected_value]["feature_importance"].sort_values(sorted_val, ascending=False).head(10),
+                      id_vars="Feature",
+                      value_vars=y_vars,
+                      var_name="Metric",
+                      value_name="Value")
+    
+    fig_fi = px.bar(df_long,
+                    x="Value",
+                    y="Feature",
+                    color="Metric",
+                    orientation="h",
+                    barmode="group",
+                    title="Feature Importance",
+                    width=800,
+                    height=500)
+    
+    return fig_fi
 
 # Run the app    
 if __name__ == '__main__': #http://127.0.0.1:8050/
