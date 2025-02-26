@@ -55,24 +55,27 @@ count_target_data = df_default["Default.Payment.Next.Month"].value_counts().sort
 fig_target_bar = px.bar(count_target_data, 
                         x="Default.Payment.Next.Month",
                         y="count",
-                        title="Default Payment Next Month",
                         labels={
                             "Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
                             "count": "Count"},
                         width=800,
                         height=500)
 
+fig_target_bar_title = "Default Payment Next Month"
+
 fig_target_box = px.box(df_default,
                         x="Default.Payment.Next.Month",
                         y="Limit_Bal",
-                        title="Credit Limit vs. Default Payment Next Month",
                         labels={
                             "Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
                             "Limit_Bal": "Credit Limit"
                             },
                         width=800,
                         height=500)
+fig_target_box_title = "Credit Limit vs. Default Payment Next Month"
 
+
+#%%
 ############
 # Dash App #
 ############
@@ -131,6 +134,7 @@ app.layout = dbc.Container(
                 width=12
             )
         ),
+        
         
         # Content area for displaying page-specific content
         dbc.Row(
@@ -201,28 +205,55 @@ def data_page_layout():
                 
                 # Middle column
                 dbc.Col([
-                    dcc.Graph(id="target-dist")
-                    ],
+                    dbc.Card([
+                        dbc.CardHeader(id="target-dist-title"),
+                        dbc.CardBody([
+                            dcc.Graph(id="target-dist")
+                            ])
+                            ], 
+                        className="h-100")
+                        ], 
                     width=5
                     ),
                     
                 # Right column
                 dbc.Col([
-                    dcc.Graph(id="cat-dist")
+                    dbc.Card([
+                        dbc.CardHeader(id="cat-dist-title"),
+                        dbc.CardBody([
+                            dcc.Graph(id="cat-dist")
+                            ])
+                        ],
+                        className="h-100")
                     ],
                     width=5)
-
                 ]),
             
             # Second row
             dbc.Row([
+                
+                
                 dbc.Col([
-                    dcc.Graph(id="feature-hist")
+                    dbc.Card([
+                        dbc.CardHeader(id="feature-hist-title"),
+                        dbc.CardBody([
+                            dcc.Graph(id="feature-hist")
+                            ])
+                        ],
+                        className="h-100")
                     ],
                     width={"size": 5, "offset": 2}
                     ),
+                
+                
                 dbc.Col([
-                    dcc.Graph(id="feature-scatterplot")
+                    dbc.Card([
+                        dbc.CardHeader(id="feature-scatter-title"),
+                        dbc.CardBody([
+                            dcc.Graph(id="feature-scatterplot")
+                            ])
+                        ],
+                        className="h-100")
                     ],
                     width=5
                     )
@@ -240,7 +271,6 @@ def models_page_layout():
             
             dbc.Row([
                 dbc.Col(
-                    
                     dbc.Card(
                         dbc.CardBody([
                             
@@ -259,48 +289,73 @@ def models_page_layout():
                     ),
                 
                 dbc.Col([
-                    dash_table.DataTable(
-                        id="classification-report",
-                        columns=[],
-                        data=[],
-                        style_table={"border": "1px solid #ccc"},
-                        style_cell={
-                            "textAlign": "center",
-                            "border": "1px solid #ccc",
-                            "padding": "5px"},
-                        style_header={
-                            "backgroundColor": "gray",
-                            "color": "white",
-                            "border": "1px solid #ccc",
-                            "fontWeight": "bold"}
-                        ),
-                    html.Div(id="summary-class-report",
-                             style={"marginTop": "20px"})
+                    dbc.Card([
+                        dbc.CardHeader("Classification Report"),
+                        dbc.CardBody([
+                            dash_table.DataTable(
+                                id="classification-report",
+                                columns=[],
+                                data=[],
+                                style_table={"border": "1px solid #ccc"},
+                                style_cell={
+                                    "textAlign": "center",
+                                    "border": "1px solid #ccc",
+                                    "padding": "5px"
+                                    },
+                                style_header={
+                                    "backgroundColor": "gray",
+                                    "color": "white",
+                                    "border": "1px solid #ccc",
+                                    "fontWeight": "bold"
+                                    }
+                                ),
+                            html.Div(id="summary-class-report", className="mt-3")
+                            ]),
+                        ],
+                        className="h-100"),
+                    
                     ],
                     width=5
                     ),
                 
                 dbc.Col([
-                    dcc.Graph(id="conf-matrix-plot")
-                    ],
-                    width=5
+                    dbc.Card([
+                        dbc.CardHeader("Confusion Matrix"),
+                        dbc.CardBody([
+                            dcc.Graph(id="conf-matrix-plot")
+                            ])
+                        ],
+                        className="h-100")
+                    ], width=5
                     )
                 ]),
             
-            # Second row
             dbc.Row([
+                
                 dbc.Col([
-                    dcc.Graph(id="roc-curve-model")
-                    ],
-                    width={"size": 5, "offset": 2}
+                    dbc.Card([
+                        dbc.CardHeader(id="roc-curve-header"),
+                        dbc.CardBody([
+                            dcc.Graph(id="roc-curve-model")
+                            ])
+                        ],
+                        className="h-100")
+                    ], width={"size": 5, "offset": 2}
                     ),
+                
                 dbc.Col([
-                    dcc.Graph(id="feature-model")
-                    ],
-                    width=5
-                    )
-                ])
+                    dbc.Card([
+                        dbc.CardHeader("Feature Importance"),
+                        dbc.CardBody([
+                            dcc.Graph(id="feature-model")
+                            ])
+                        ],
+                        className="h-100")
+                ], width=5)
+            
             ])
+            ])
+                    
                 
 ##############################################################
 # Callback to control page layout rendering based on the url #
@@ -336,20 +391,22 @@ def display_page(pathname):
 # Data Page: Callback to update graph selection based on radioitem choice #
 ###########################################################################
 @app.callback(
+    Output("target-dist-title", "children"),
     Output("target-dist", "figure"),
     Input("target-radio", "value")
     )
 def update_target_graph(selected_option):
     
     if selected_option == "target-bar":
-        return fig_target_bar
+        return fig_target_bar_title, fig_target_bar
     elif selected_option == "target-box":
-        return fig_target_box
+        return fig_target_box_title, fig_target_box
     
 ############################################################################################
 # Data Page: Callback to update graph selection based on dropdown for categorical features #
 ############################################################################################
 @app.callback(
+    Output("cat-dist-title", "children"),
     Output("cat-dist", "figure"),
     Input("cat-dropdown", "value")
     )
@@ -358,6 +415,7 @@ def update_target_cat_graph(selected_option):
     count_cat = df_default.groupby([selected_option, "Default.Payment.Next.Month"]).size().reset_index(name="count")
     count_cat = count_cat.rename(columns={"Default.Payment.Next.Month": "Default Payment"})
     count_cat["Default Payment"] = count_cat["Default Payment"].astype(str)
+    cat_title = f"Default Count by {selected_option}"
     
     if selected_option == "Sex":
         cat_labels = {"Sex": "Sex (1 = Male, 2 = Female)", "count": "Count"}
@@ -365,42 +423,48 @@ def update_target_cat_graph(selected_option):
         cat_labels = {"Education": "Education (1 = Grad. School, 2 = Uni, 3 = HS, 4 = Others, 5&6 = Unk.)", "count": "Count"}
     else:
         cat_labels = {"Marriage": "Marriage (0 = Unk, 1 = Married, 2 = Single, 3 = Others)", "count": "Count"}
-    
-    return px.bar(count_cat,
+        
+    fig_cat_bar = px.bar(count_cat,
                   x=selected_option,
                   y="count",
                   color="Default Payment",
                   barmode="group",
-                  title=f"Default Count by {selected_option}",
+                  #title=f"Default Count by {selected_option}",
                   labels = cat_labels,
                   width=800,
                   height=500)
+    
+    return cat_title, fig_cat_bar
 
 ###########################################################################################
 # Data Page: Callback to update graph selection based on dropdown for continuous features #
 ###########################################################################################
 @app.callback(
+    Output("feature-hist-title", "children"),
     Output("feature-hist", "figure"),
     Input("feature-hist-dropdown", "value")
     )
 def update_feature_hist(selected_option):
     
-    return px.histogram(df_default,
+    fig_feature_title = f"{selected_option} Distribution by Default Status"
+    fig_feature_hist = px.histogram(df_default,
                         x=selected_option,
                         color="Default.Payment.Next.Month",
                         barmode="overlay",
                         histnorm="density",
                         opacity=0.25,
-                        title=f"{selected_option} Distribution by Default Status",
                         labels={"Default.Payment.Next.Month": "Default Payment", f"{selected_option}": f"{selected_option}"},
                         width=800,
                         height=500
                         )
+    
+    return fig_feature_title, fig_feature_hist
 
 ##########################################################
 # Data Page: Callback to update scatterplots of features #
 ##########################################################
 @app.callback(
+    Output("feature-scatter-title", "children"),
     Output("feature-scatterplot", "figure"),
     Input("feature-scat-dropdown", "value")
     )
@@ -408,13 +472,13 @@ def update_feature_scatterplot(selected_option):
     
     df_scatter = df_default
     df_scatter["Default Payment"] = df_default["Default.Payment.Next.Month"].astype(str)
+    fig_scatter_title = f"Limit_Bal vs. {selected_option}"
 
     fig_scatter = px.scatter(
         df_scatter,
         x="Limit_Bal",
         y=selected_option,
-        color="Default Payment",  
-        title=f"Limit_Bal vs. {selected_option}",
+        color="Default Payment",
         labels={
             "Limit_Bal": "Credit Limit",
             selected_option: selected_option,
@@ -427,7 +491,7 @@ def update_feature_scatterplot(selected_option):
     # Reverse the order of the internal traces so that "1" is drawn last and placed on top of "0"
     fig_scatter.data = fig_scatter.data[::-1]
 
-    return fig_scatter
+    return fig_scatter_title, fig_scatter
 
 ###########################################################################
 # Models Page: Callbacks to update classification report and summary text #
@@ -497,8 +561,7 @@ def update_conf_matrix(selected_value):
                        labels=dict(x="Predicted", y="Actual"),
                        x=["Not Default (pred)", "Default (pred)"], # Class labels on x-axis
                        y=["Not Default (actual)", "Default (actual)"], # ... y-axis
-                       color_continuous_scale="Blues",
-                       title="Confusion Matrix")
+                       color_continuous_scale="Blues")
     
     fig_cm.update_layout(coloraxis_showscale=False)
     
@@ -512,6 +575,7 @@ def update_conf_matrix(selected_value):
 # Models Page: Callback to update ROC Curve #
 #############################################
 @app.callback(
+    Output("roc-curve-header", "children"),
     Output("roc-curve-model", "figure"),
     Input("model-dropdown", "value")
     )
@@ -520,10 +584,11 @@ def update_roc_curve_model(selected_value):
     # False positive rate, true positive rate
     fpr, tpr, thresholds = roc_curve(y_test, eval_dict[selected_value]["y_proba"])
     score = eval_dict[selected_value]["auc_score"]
+    title_header = f"ROC Curve (AUC={score:.4f})"
     
     fig_roc = px.area(x=fpr,
                       y=tpr,
-                      title=f"ROC Curve (AUC={score:.4f})",
+                      #title=f"ROC Curve (AUC={score:.4f})",
                       labels=dict(
                           x="False Positive Rate",
                           y="True Positive Rate"
@@ -535,7 +600,7 @@ def update_roc_curve_model(selected_value):
                       line=dict(dash="dash"),
                       x0=0, x1=1, y0=0, y1=1)
     
-    return fig_roc
+    return title_header, fig_roc
 
 ######################################################
 # Models Page: Callback to update feature importance #
@@ -568,7 +633,7 @@ def update_feature_importance(selected_value):
                     color="Metric",
                     orientation="h",
                     barmode="group",
-                    title="Feature Importance",
+                    #title="Feature Importance",
                     width=800,
                     height=500)
     

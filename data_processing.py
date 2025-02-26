@@ -4,7 +4,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 def calc_pct_diff(row):
     """Calculate percentage difference between latest and earliest bill amount"""
-    # Use the first non-zero value in BILL_AMT1, BILL_AMT2, BILL_AMT3, BILL_AMT4, BILL_AMT5
+    # Use the first non-zero value in BILL_AMT1, BILL_AMT2, BILL_AMT3, BILL_AMT4, BILL_AMT5, BILL_AMT6
     bill_cols = ["BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6"]
     left_val = 0
     for col in bill_cols:
@@ -67,7 +67,7 @@ def preprocess_data(path):
     X = df_default.drop("default.payment.next.month", axis=1)
     X_transformed = ct.fit_transform(X)
     
-    # Create a DataFrame from the transformed data
+    # Create a df from the transformed data
     new_columns = [col.split("__")[1] for col in ct.get_feature_names_out()]
     df_X_transformed = pd.DataFrame(X_transformed, columns=new_columns)
     

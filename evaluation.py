@@ -15,7 +15,7 @@ def evaluate_model(model, X_train, X_test, y_train, y_test, model_name):
     y_proba = model_choice.predict_proba(X_test)[:, 1]
     
     # Classification report
-    c_report = classification_report(y_test, y_pred)
+    c_report = classification_report(y_test, y_pred, output_dict=True)
     
     # Confusion matrix
     c_matrix = confusion_matrix(y_test, y_pred)
