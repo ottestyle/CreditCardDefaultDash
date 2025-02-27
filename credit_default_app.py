@@ -14,6 +14,15 @@ import dash_bootstrap_components as dbc
 import plotly.io as pio
 import plotly.express as px
 
+def target_bar_plot(df, data_state):
+    count_target_data = df[data_state]["Default.Payment.Next.Month"].value_counts().sort_index().reset_index()
+
+    return px.bar(count_target_data,
+                  x="Default.Payment.Next.Month",
+                  y="count",
+                  labels={"Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
+                          "count": "Count"})
+     
 pio.renderers.default="browser"
 
 # Load data
@@ -28,8 +37,10 @@ from evaluation import evaluate_model
 eval_dict = {}
 
 # Preprocess data
-df_default, X, Y = preprocess_data(path)
-df_default.columns = [x.lower().title() for x in df_default.columns]
+default_data, X, Y = preprocess_data(path)
+
+for key, df in default_data.items():
+    df.columns = [col.lower().title() for col in df.columns]
 
 # Train and test sets (80/20 split)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
@@ -45,33 +56,25 @@ for model_name, model in models.items():
     eval_dict[model_name] = evaluate_model(model, X_train, X_test, y_train, y_test, model_name)
 
 # List with continuous features
-continuous_var = ["Age", "Bill_Amt1", "Bill_Amt2", "Bill_Amt3", "Bill_Amt4", "Bill_Amt5", "Bill_Amt6", "Pay_Amt1",
+continuous_var = ["Limit_Bal", "Age", "Bill_Amt1", "Bill_Amt2", "Bill_Amt3", "Bill_Amt4", "Bill_Amt5", "Bill_Amt6", "Pay_Amt1",
                   "Pay_Amt2", "Pay_Amt3", "Pay_Amt4", "Pay_Amt5", "Pay_Amt6", "Total_Bill_Amt", "Credit_Utilization",
                   "Avg_Monthly_Utilization", "Bill_Trend", "Age_Limit_Interaction"]
 
 # Static plots for distribution of target as well target vs. credit limit
-count_target_data = df_default["Default.Payment.Next.Month"].value_counts().sort_index().reset_index()
+count_target_data = default_data["Cleaned"]["Default.Payment.Next.Month"].value_counts().sort_index().reset_index()
 
 fig_target_bar = px.bar(count_target_data, 
                         x="Default.Payment.Next.Month",
                         y="count",
-                        labels={
-                            "Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
-                            "count": "Count"},
-                        width=800,
-                        height=500)
-
+                        labels={"Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
+                                "count": "Count"})
 fig_target_bar_title = "Default Payment Next Month"
 
-fig_target_box = px.box(df_default,
+fig_target_box = px.box(default_data["Cleaned"],
                         x="Default.Payment.Next.Month",
                         y="Limit_Bal",
-                        labels={
-                            "Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
-                            "Limit_Bal": "Credit Limit"
-                            },
-                        width=800,
-                        height=500)
+                        labels={"Default.Payment.Next.Month": "Default (0 = No, 1 = Yes)",
+                                "Limit_Bal": "Credit Limit"})
 fig_target_box_title = "Credit Limit vs. Default Payment Next Month"
 
 
@@ -96,9 +99,8 @@ app.layout = dbc.Container(
         dbc.Row(
             dbc.Col(
                 html.H1("Default of Credit Card Clients in Taiwan",
-                        className="text-white",
+                        className="bg-primary text-white",
                         style={
-                            "backgroundColor": "gray",
                             "padding": "10px",
                             "textAlign": "left"
                             }
@@ -112,8 +114,13 @@ app.layout = dbc.Container(
             dbc.Col(
                 dbc.Nav(
                     [
-                        dbc.NavLink("Data", 
-                                    href="/data", 
+                        dbc.NavLink("Raw Data", 
+                                    href="/raw-data", 
+                                    active="exact", 
+                                    style={"color": "black"}
+                                    ),
+                        dbc.NavLink("Clean Data", 
+                                    href="/clean-data", 
                                     active="exact", 
                                     style={"color": "black"}
                                     ),
@@ -135,7 +142,6 @@ app.layout = dbc.Container(
             )
         ),
         
-        
         # Content area for displaying page-specific content
         dbc.Row(
             dbc.Col(
@@ -147,7 +153,7 @@ app.layout = dbc.Container(
 #######################################
 # Define the layout for the Data page #
 #######################################
-def data_page_layout():
+def clean_data_page_layout():
     return dbc.Container(
         fluid=True,
         className="py-0", # Remove vertical padding
@@ -162,17 +168,18 @@ def data_page_layout():
                     dbc.Card(
                         dbc.CardBody([
                             
-                            dbc.Label("Distribution"),
-                            dcc.RadioItems(
-                                id="target-radio",
-                                options=[
-                                    {"label": "Target Bar Chart", "value": "target-bar"},
-                                    {"label": "Target vs. Credit Limit", "value": "target-box"}],
-                                value="target-bar",
-                                className="mb-3" # Spacing
+                            dbc.Label("Distribution of Continuous Feature",
+                                      className="label-style"),
+                            dcc.Dropdown(
+                                id="hist-feature-dropdown",
+                                options=sorted(continuous_var),
+                                value=sorted(continuous_var)[0],
+                                clearable=False,
+                                className="mb-3"
                                 ),
                                 
-                                dbc.Label("Target vs. Categorical Feature"),
+                                dbc.Label("Target vs. Categorical Feature",
+                                          className="label-style"),
                                 dcc.Dropdown(
                                     id="cat-dropdown",
                                     options=[
@@ -181,24 +188,29 @@ def data_page_layout():
                                         {"label": "Marriage", "value": "Marriage"}
                                         ],
                                     value="Sex",
+                                    clearable=False,
                                     className="mb-3"
                                     ),
                                 
-                                dbc.Label("Histogram of a Continuous Feature"),
+                                dbc.Label("Continuous Feature by Default Status",
+                                          className="label-style"),
                                 dcc.Dropdown(
                                     id="feature-hist-dropdown",
                                     options=sorted(continuous_var),
                                     value=sorted(continuous_var)[0],
+                                    clearable=False,
                                     className="mb-3"
                                     ),
                                 
-                                dbc.Label("Scatterplot of Continuous Features"),
+                                dbc.Label("Scatterplot of Continuous Features",
+                                          className="label-style"),
                                 dcc.Dropdown(
                                     id="feature-scat-dropdown",
                                     options=sorted(continuous_var),
-                                    value=sorted(continuous_var)[0])
+                                    value=sorted(continuous_var)[0],
+                                    clearable=False)
                                 ]),
-                                className="bg-light" # Greyish background
+                                className="bg-primary"
                             ),
                     width=2 # 2 out of 12
                     ),    
@@ -206,9 +218,15 @@ def data_page_layout():
                 # Middle column
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="target-dist-title"),
+                        dbc.CardHeader("Default Payment Next Month", #id="target-dist-title",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }
+                                       ),
                         dbc.CardBody([
-                            dcc.Graph(id="target-dist")
+                            dcc.Graph(figure=target_bar_plot(default_data, "Cleaned"))
                             ])
                             ], 
                         className="h-100")
@@ -219,9 +237,14 @@ def data_page_layout():
                 # Right column
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="cat-dist-title"),
+                        dbc.CardHeader(id="hist-feature-title",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
-                            dcc.Graph(id="cat-dist")
+                            dcc.Graph(id="hist-feature")
                             ])
                         ],
                         className="h-100")
@@ -232,10 +255,35 @@ def data_page_layout():
             # Second row
             dbc.Row([
                 
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader(id="cat-dist-title",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
+                        dbc.CardBody([
+                            dcc.Graph(id="cat-dist")
+                            ])
+                        ],
+                        className="h-100")
+                    ],
+                    width={"size": 5, "offset": 2})
+                
+                ]),
+            
+            # Third row
+            dbc.Row([
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="feature-hist-title"),
+                        dbc.CardHeader(id="feature-hist-title",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
                             dcc.Graph(id="feature-hist")
                             ])
@@ -248,7 +296,12 @@ def data_page_layout():
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="feature-scatter-title"),
+                        dbc.CardHeader(id="feature-scatter-title",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
                             dcc.Graph(id="feature-scatterplot")
                             ])
@@ -257,7 +310,9 @@ def data_page_layout():
                     ],
                     width=5
                     )
+                
                 ])
+            
             ])
 
 #########################################
@@ -274,7 +329,8 @@ def models_page_layout():
                     dbc.Card(
                         dbc.CardBody([
                             
-                            dbc.Label("Choose model"),
+                            dbc.Label("Choose model",
+                                      className="label-style"),
                             dcc.Dropdown(
                                 id="model-dropdown",
                                 options=list(models.keys()),
@@ -283,14 +339,19 @@ def models_page_layout():
                                 className="mb-3"
                                 )
                             ]),
-                        className="bg-light"
+                        className="bg-primary"
                         ),
                     width=2
                     ),
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader("Classification Report"),
+                        dbc.CardHeader("Classification Report",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
                             dash_table.DataTable(
                                 id="classification-report",
@@ -320,7 +381,12 @@ def models_page_layout():
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader("Confusion Matrix"),
+                        dbc.CardHeader("Confusion Matrix",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
                             dcc.Graph(id="conf-matrix-plot")
                             ])
@@ -334,7 +400,12 @@ def models_page_layout():
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="roc-curve-header"),
+                        dbc.CardHeader(id="roc-curve-header",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
                             dcc.Graph(id="roc-curve-model")
                             ])
@@ -345,14 +416,19 @@ def models_page_layout():
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader("Feature Importance"),
+                        dbc.CardHeader("Feature Importance",
+                                       className="bg-primary text-white",
+                                       style={
+                                           "fontSize": "20px",
+                                           "fontWeight": "bold"
+                                           }),
                         dbc.CardBody([
-                            dcc.Graph(id="feature-model")
+                            dcc.Graph(id="feature-model",
+                                      config={"responsive": True})
                             ])
                         ],
                         className="h-100")
                 ], width=5)
-            
             ])
             ])
                     
@@ -368,15 +444,20 @@ def display_page(pathname):
     """
     This callback function returns the content for the page based on the URL pathname.
     - If the pathname is '/' it will be redirected to the data content.
-    - If the pathname is "/data" the cleaned data content is shown.
+    - If the pathname is '/raw-data' the raw data content is shown.
+    - If the pathname is '/clean-data' the cleaned data content is shown.
     - If the pathname is '/models' results of the models are shown.
     - If the pathname is '/model-comparison', comparison of models is shown.
     - Otherwise, a 404 error message is displayed.
     """
     if pathname == "/":
-        return dcc.Location(pathname="/data", id="redirect")
-    elif pathname == "/data":
-        return data_page_layout()
+        return dcc.Location(pathname="/raw-data", id="redirect")
+    elif pathname == "/raw-data":
+        return html.Div([
+            html.H3("This is the raw data page", style={"textAlign": "center"})
+            ])
+    elif pathname == "/clean-data":
+        return clean_data_page_layout()
     elif pathname == "/models":
         return models_page_layout()
     elif pathname == "/model-comparison":
@@ -391,16 +472,16 @@ def display_page(pathname):
 # Data Page: Callback to update graph selection based on radioitem choice #
 ###########################################################################
 @app.callback(
-    Output("target-dist-title", "children"),
-    Output("target-dist", "figure"),
-    Input("target-radio", "value")
+    Output("hist-feature-title", "children"),
+    Output("hist-feature", "figure"),
+    Input("hist-feature-dropdown", "value")
     )
 def update_target_graph(selected_option):
     
-    if selected_option == "target-bar":
-        return fig_target_bar_title, fig_target_bar
-    elif selected_option == "target-box":
-        return fig_target_box_title, fig_target_box
+    fig_feature_title = f"{selected_option} Distribution"
+    fig_hist_feature = px.histogram(default_data["Cleaned"],
+                                    x=selected_option)
+    return fig_feature_title, fig_hist_feature
     
 ############################################################################################
 # Data Page: Callback to update graph selection based on dropdown for categorical features #
@@ -412,7 +493,7 @@ def update_target_graph(selected_option):
     )
 def update_target_cat_graph(selected_option):
     
-    count_cat = df_default.groupby([selected_option, "Default.Payment.Next.Month"]).size().reset_index(name="count")
+    count_cat = default_data["Cleaned"].groupby([selected_option, "Default.Payment.Next.Month"]).size().reset_index(name="count")
     count_cat = count_cat.rename(columns={"Default.Payment.Next.Month": "Default Payment"})
     count_cat["Default Payment"] = count_cat["Default Payment"].astype(str)
     cat_title = f"Default Count by {selected_option}"
@@ -425,14 +506,11 @@ def update_target_cat_graph(selected_option):
         cat_labels = {"Marriage": "Marriage (0 = Unk, 1 = Married, 2 = Single, 3 = Others)", "count": "Count"}
         
     fig_cat_bar = px.bar(count_cat,
-                  x=selected_option,
-                  y="count",
-                  color="Default Payment",
-                  barmode="group",
-                  #title=f"Default Count by {selected_option}",
-                  labels = cat_labels,
-                  width=800,
-                  height=500)
+                         x=selected_option,
+                         y="count",
+                         color="Default Payment",
+                         barmode="group",
+                         labels=cat_labels)
     
     return cat_title, fig_cat_bar
 
@@ -447,16 +525,13 @@ def update_target_cat_graph(selected_option):
 def update_feature_hist(selected_option):
     
     fig_feature_title = f"{selected_option} Distribution by Default Status"
-    fig_feature_hist = px.histogram(df_default,
-                        x=selected_option,
-                        color="Default.Payment.Next.Month",
-                        barmode="overlay",
-                        histnorm="density",
-                        opacity=0.25,
-                        labels={"Default.Payment.Next.Month": "Default Payment", f"{selected_option}": f"{selected_option}"},
-                        width=800,
-                        height=500
-                        )
+    fig_feature_hist = px.histogram(default_data["Cleaned"],
+                                    x=selected_option,
+                                    color="Default.Payment.Next.Month",
+                                    barmode="overlay",
+                                    histnorm="density",
+                                    opacity=0.25,
+                                    labels={"Default.Payment.Next.Month": "Default Payment", f"{selected_option}": f"{selected_option}"})
     
     return fig_feature_title, fig_feature_hist
 
@@ -470,8 +545,8 @@ def update_feature_hist(selected_option):
     )
 def update_feature_scatterplot(selected_option):
     
-    df_scatter = df_default
-    df_scatter["Default Payment"] = df_default["Default.Payment.Next.Month"].astype(str)
+    df_scatter = default_data["Cleaned"]
+    df_scatter["Default Payment"] = default_data["Cleaned"]["Default.Payment.Next.Month"].astype(str)
     fig_scatter_title = f"Limit_Bal vs. {selected_option}"
 
     fig_scatter = px.scatter(
@@ -483,9 +558,7 @@ def update_feature_scatterplot(selected_option):
             "Limit_Bal": "Credit Limit",
             selected_option: selected_option,
             "Default Payment": "Default Payment"
-        },
-        width=800,
-        height=500
+        }
     )
 
     # Reverse the order of the internal traces so that "1" is drawn last and placed on top of "0"
@@ -510,7 +583,7 @@ def update_class_report(selected_value):
     df_class_report = pd.DataFrame(eval_dict[selected_value]["classification_report"])
     
     # Prepare for the DataTable
-    df_for_table = df_class_report.reset_index().rename(columns={"index": "Metric"})
+    df_for_table = df_class_report.reset_index().rename(columns={"index": "Metric", "accuracy": "Accuracy", "macro avg": "Macro Avg", "weighted avg": "Weighted Avg"})
     df_for_table = round(df_for_table, 2)
     
     # Convert to DataTable format
@@ -588,13 +661,10 @@ def update_roc_curve_model(selected_value):
     
     fig_roc = px.area(x=fpr,
                       y=tpr,
-                      #title=f"ROC Curve (AUC={score:.4f})",
                       labels=dict(
                           x="False Positive Rate",
                           y="True Positive Rate"
-                          ),
-                      width=800,
-                      height=500)
+                          ))
     
     fig_roc.add_shape(type="line",
                       line=dict(dash="dash"),
@@ -632,10 +702,7 @@ def update_feature_importance(selected_value):
                     y="Feature",
                     color="Metric",
                     orientation="h",
-                    barmode="group",
-                    #title="Feature Importance",
-                    width=800,
-                    height=500)
+                    barmode="group")
     
     return fig_fi
 
