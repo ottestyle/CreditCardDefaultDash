@@ -2,11 +2,11 @@ import dash_bootstrap_components as dbc
 from dash import dcc
 import plotly.express as px
 
-def clean_data_layout(continuous_var, default_data):
-    """Layout for the clean data page"""
+def raw_data_layout(continuous_var, default_data):
+    """Layout for the raw data page"""
     return dbc.Container(
         fluid=True,
-        className="py-0", 
+        className="py-0", # Remove vertical padding
         children=[
             
             # First row
@@ -21,7 +21,7 @@ def clean_data_layout(continuous_var, default_data):
                             dbc.Label("Histogram of a Continuous Feature",
                                       className="label-style"),
                             dcc.Dropdown(
-                                id="clean-hist-feature-dropdown",
+                                id="raw-hist-feature-dropdown",
                                 options=sorted(continuous_var),
                                 value=sorted(continuous_var)[0],
                                 clearable=False,
@@ -31,7 +31,7 @@ def clean_data_layout(continuous_var, default_data):
                             dbc.Label("Boxplot of a Continuous Feature",
                                       className="label-style"),
                             dcc.Dropdown(
-                                id="clean-boxplot-feature-dropdown",
+                                id="raw-boxplot-feature-dropdown",
                                 options=sorted(continuous_var),
                                 value=sorted(continuous_var)[0],
                                 clearable=False,
@@ -41,7 +41,7 @@ def clean_data_layout(continuous_var, default_data):
                             dbc.Label("Categorical Feature by Default Status",
                                       className="label-style"),
                             dcc.Dropdown(
-                                id="clean-barchart-feature-dropdown",
+                                id="raw-barchart-feature-dropdown",
                                 options=[
                                     {"label": "Sex", "value": "Sex"},
                                     {"label": "Education", "value": "Education"},
@@ -55,7 +55,7 @@ def clean_data_layout(continuous_var, default_data):
                             dbc.Label("Continuous Feature by Default Status",
                                       className="label-style"),
                             dcc.Dropdown(
-                                id="clean-hist-density-feature-dropdown",
+                                id="raw-hist-density-feature-dropdown",
                                 options=sorted(continuous_var),
                                 value=sorted(continuous_var)[0],
                                 clearable=False,
@@ -65,7 +65,7 @@ def clean_data_layout(continuous_var, default_data):
                             dbc.Label("Scatterplot of Continuous Features",
                                       className="label-style"),
                             dcc.Dropdown(
-                                id="clean-scatter-feature-dropdown",
+                                id="raw-scatter-feature-dropdown",
                                 options=sorted(continuous_var),
                                 value=sorted(continuous_var)[0],
                                 clearable=False)
@@ -86,7 +86,7 @@ def clean_data_layout(continuous_var, default_data):
                                            }
                                        ),
                         dbc.CardBody([
-                            dcc.Graph(figure=target_bar_plot(default_data, "Cleaned"))
+                            dcc.Graph(figure=target_bar_plot(default_data, "Raw"))
                             ])
                             ], 
                         className="h-100")
@@ -97,14 +97,14 @@ def clean_data_layout(continuous_var, default_data):
                 # Third column
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="clean-hist-feature-title",
+                        dbc.CardHeader(id="raw-hist-feature-title",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
                                            "fontWeight": "bold"
                                            }),
                         dbc.CardBody([
-                            dcc.Graph(id="clean-hist-feature")
+                            dcc.Graph(id="raw-hist-feature")
                             ])
                         ],
                         className="h-100")
@@ -114,14 +114,14 @@ def clean_data_layout(continuous_var, default_data):
                 # Fourth column
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="clean-boxplot-feature-title",
+                        dbc.CardHeader(id="raw-boxplot-feature-title",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
                                            "fontWeight": "bold"
                                            }),
                         dbc.CardBody([
-                            dcc.Graph(id="clean-boxplot-feature")
+                            dcc.Graph(id="raw-boxplot-feature")
                             ])
                         ],
                         className="h-100")
@@ -134,14 +134,14 @@ def clean_data_layout(continuous_var, default_data):
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="clean-barchart-feature-title",
+                        dbc.CardHeader(id="raw-barchart-feature-title",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
                                            "fontWeight": "bold"
                                            }),
                         dbc.CardBody([
-                            dcc.Graph(id="clean-barchart-feature")
+                            dcc.Graph(id="raw-barchart-feature")
                             ])
                         ],
                         className="h-100")
@@ -151,14 +151,14 @@ def clean_data_layout(continuous_var, default_data):
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="clean-hist-density-feature-title",
+                        dbc.CardHeader(id="raw-hist-density-feature-title",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
                                            "fontWeight": "bold"
                                            }),
                         dbc.CardBody([
-                            dcc.Graph(id="clean-hist-density-feature")
+                            dcc.Graph(id="raw-hist-density-feature")
                             ])
                         ],
                         className="h-100")
@@ -168,14 +168,14 @@ def clean_data_layout(continuous_var, default_data):
                 
                 dbc.Col([
                     dbc.Card([
-                        dbc.CardHeader(id="clean-scatter-feature-title",
+                        dbc.CardHeader(id="raw-scatter-feature-title",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
                                            "fontWeight": "bold"
                                            }),
                         dbc.CardBody([
-                            dcc.Graph(id="clean-scatter-feature")
+                            dcc.Graph(id="raw-scatter-feature")
                             ])
                         ],
                         className="h-100")

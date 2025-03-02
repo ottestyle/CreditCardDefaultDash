@@ -18,6 +18,7 @@ os.chdir(os.environ["DEFAULT_OF_CREDIT_CARD_CLIENTS"])
 
 from data_processing import preprocess_data
 from evaluation import evaluate_model
+from layouts.raw_data_layout import raw_data_layout
 from layouts.clean_data_layout import clean_data_layout
 from layouts.models_layout import models_layout
 from callbacks import register_callbacks
@@ -137,8 +138,7 @@ def display_page(pathname):
     if pathname == "/":
         return dcc.Location(pathname="/raw-data", id="redirect")
     elif pathname == "/raw-data":
-        return html.Div([
-            html.H3("This is the raw data page", style={"textAlign": "center"})])
+        return raw_data_layout(continuous_var, default_data)
     elif pathname == "/clean-data":
         return clean_data_layout(continuous_var, default_data)
     elif pathname == "/models":
