@@ -5,7 +5,7 @@ from sklearn.metrics import confusion_matrix, classification_report, roc_auc_sco
 from sklearn.inspection import permutation_importance
 
 def evaluate_model(model, X_train, X_test, y_train, y_test, model_name):
-    """Function to evaluate models, extract metrics and feature importance"""
+    """Evaluate models, extract metrics and feature importance."""
     # Fitting the model using the training data
     model_choice = model
     model_choice.fit(X_train, y_train)    
@@ -14,13 +14,9 @@ def evaluate_model(model, X_train, X_test, y_train, y_test, model_name):
     y_pred = model_choice.predict(X_test)
     y_proba = model_choice.predict_proba(X_test)[:, 1]
     
-    # Classification report
+    # Classification report, confusion matrix, ROC AUC score
     c_report = classification_report(y_test, y_pred, output_dict=True)
-    
-    # Confusion matrix
     c_matrix = confusion_matrix(y_test, y_pred)
-    
-    # ROC AUC Score
     auc_score = roc_auc_score(y_test, y_proba)
     
     # Coefficients or feature importance
