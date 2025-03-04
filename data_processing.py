@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import PowerTransformer, OneHotEncoder
+from sklearn.preprocessing import PowerTransformer, OneHotEncoder, StandardScaler
 
 def remove_outliers_percentile(df, feature, lower_pct=0.01, upper_pct=0.99):
     """Remove observations outside the given percentile range"""
@@ -42,8 +42,9 @@ def load_and_engineer_data(path):
     
     bill_cols = [f"Bill Amt{i}" for i in range(1,7)]
     pay_amt_cols = [f"Pay Amt{i}" for i in range(1,7)]
-    categorical_vars = ["Sex", "Education", "Marriage", "Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6"]
+    categorical_vars = ["Sex", "Education", "Marriage", "Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6", "Max Delay"]
     delay_cols = ["Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6"]
+    log_cols = pay_amt_cols + ["Limit Bal", "Credit Utilization", "Avg Monthly Utilization", "Age Limit Interaction"]
     
     # Feature Engineering
     df["Avg Bill Amt"] = df[bill_cols].mean(axis=1)
@@ -75,6 +76,10 @@ def load_and_engineer_data(path):
     # Convert categorical variables to category type
     df[categorical_vars] = df[categorical_vars].astype("category")
     
+    # Log transformation of right skewed distributions
+    for col in log_cols:
+        df[col] = np.log(df[col] + 1)
+    
     return df_raw, df, bill_cols, pay_amt_cols, categorical_vars
 
 def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
@@ -82,14 +87,16 @@ def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
     Preprocessing pipeline to transform financial variables and encode categoricals.
     Only fitted to the training data
     """
-    financial_cols = bill_cols + pay_amt_cols + ["Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt"]
+    bill_cols_extend = bill_cols + ["Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt"]
+    other_numeric_vars = pay_amt_cols + ["Limit Bal", "Age", "Credit Utilization", "Avg Monthly Utilization", "Bill Trend", "Pay Trend", "Age Limit Interaction"]
     
     ct = ColumnTransformer(
         transformers=[
-            ("financial", PowerTransformer(method="yeo-johnson"), financial_cols),
+            ("financial", PowerTransformer(method="yeo-johnson"), bill_cols_extend),
+            ("other_scaler", StandardScaler(), other_numeric_vars),
             ("encoder", OneHotEncoder(drop=None, sparse_output=False), categorical_vars)
             ],
-        remainder="drop" 
+        remainder="passthrough" 
         )
     return ct
 

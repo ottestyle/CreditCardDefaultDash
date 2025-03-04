@@ -84,7 +84,7 @@ def register_raw_callbacks(app, default_data):
         
         df_scatter = default_data["Raw"]
         df_scatter["Default Payment"] = default_data["Cleaned"]["Default Payment Next Month"].astype(str)
-        title = f"Limit_Bal vs. {selected_option}"
+        title = f"Limit Bal vs. {selected_option}"
     
         fig = px.scatter(df_scatter,
                          x="Limit Bal",
