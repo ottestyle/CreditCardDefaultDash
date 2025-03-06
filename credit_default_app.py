@@ -1,3 +1,4 @@
+# credit_default_app.py
 import os
 import kagglehub
 
@@ -19,13 +20,12 @@ os.chdir(os.environ["DEFAULT_OF_CREDIT_CARD_CLIENTS"])
 
 from data_processing import preprocess_data, build_preprocessing_pipeline
 from evaluation import evaluate_model
-from layouts.raw_data_layout import raw_data_layout
-from layouts.clean_data_layout import clean_data_layout
+from layouts.data_layout import data_layout
 from layouts.models_layout import models_layout
 from callbacks import register_callbacks
 
 # Preprocess data: raw vs. cleaned, features and target
-default_data, X, Y, bill_cols, pay_amt_cols, categorical_vars = preprocess_data(path)
+default_data, X, Y, bill_cols, pay_amt_cols, categorical_vars, df_vif = preprocess_data(path)
 
 # Train and test sets (80/20 split)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
@@ -55,11 +55,6 @@ models = {
 eval_dict = {}
 for model_name, model in models.items():
     eval_dict[model_name] = evaluate_model(model, X_train_transformed, X_test_transformed, y_train, y_test, model_name)
-
-# List with continuous features
-continuous_var = ["Limit Bal", "Age", "Bill Amt1", "Bill Amt2", "Bill Amt3", "Bill Amt4", "Bill Amt5", "Bill Amt6", "Pay Amt1",
-                  "Pay Amt2", "Pay Amt3", "Pay Amt4", "Pay Amt5", "Pay Amt6", "Total Bill Amt", "Credit Utilization",
-                  "Avg Monthly_Utilization", "Bill Trend", "Age Limit Interaction"]
 
 #%%
 ############
@@ -97,13 +92,8 @@ app.layout = dbc.Container(
             dbc.Col(
                 dbc.Nav(
                     [
-                        dbc.NavLink("Raw Data", 
-                                    href="/raw-data", 
-                                    active="exact", 
-                                    style={"color": "black"}
-                                    ),
-                        dbc.NavLink("Clean Data", 
-                                    href="/clean-data", 
+                        dbc.NavLink("Data", 
+                                    href="/data", 
                                     active="exact", 
                                     style={"color": "black"}
                                     ),
@@ -144,18 +134,15 @@ def display_page(pathname):
     """
     This callback function returns the content for the page based on the URL pathname.
     - If the pathname is '/' it will be redirected to the data content.
-    - If the pathname is '/raw-data' the raw data content is shown.
-    - If the pathname is '/clean-data' the cleaned data content is shown.
+    - If the pathname is '/data' the data content is shown.
     - If the pathname is '/models' results of the models are shown.
     - If the pathname is '/model-comparison', comparison of models is shown.
     - Otherwise, a 404 error message is displayed.
     """
     if pathname == "/":
-        return dcc.Location(pathname="/raw-data", id="redirect")
-    elif pathname == "/raw-data":
-        return raw_data_layout(continuous_var, default_data)
-    elif pathname == "/clean-data":
-        return clean_data_layout(continuous_var, default_data)
+        return dcc.Location(pathname="/data", id="redirect")
+    elif pathname == "/data":
+        return data_layout(default_data)
     elif pathname == "/models":
         return models_layout(models)
     elif pathname == "/model-comparison":
@@ -166,7 +153,7 @@ def display_page(pathname):
             html.H3("404: Page not found", style={"textAlign": "center"})])
     
 # Register all callbacks
-register_callbacks(app, default_data, eval_dict, y_test)
+register_callbacks(app, default_data, df_vif, eval_dict, y_test)
 
 # Run the app    
 if __name__ == '__main__': #http://127.0.0.1:8050/

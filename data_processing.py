@@ -1,7 +1,9 @@
+# data_processing.py
 import pandas as pd
 import numpy as np
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import PowerTransformer, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import PowerTransformer, OrdinalEncoder, OneHotEncoder, StandardScaler
 
 def remove_outliers_percentile(df, feature, lower_pct=0.01, upper_pct=0.99):
     """Remove observations outside the given percentile range"""
@@ -46,6 +48,10 @@ def load_and_engineer_data(path):
     delay_cols = ["Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6"]
     log_cols = pay_amt_cols + ["Limit Bal", "Credit Utilization", "Avg Monthly Utilization", "Age Limit Interaction"]
     
+    # Remove outliers in bill cols
+    for col in bill_cols:
+        df = remove_outliers_percentile(df, col)
+    
     # Feature Engineering
     df["Avg Bill Amt"] = df[bill_cols].mean(axis=1)
     df["Avg Pay Amt"] = df[pay_amt_cols].mean(axis=1)
@@ -62,16 +68,24 @@ def load_and_engineer_data(path):
     
     # Interaction feature
     df["Age Limit Interaction"] = df["Age"] * df["Limit Bal"]
-    
-    # Remove outliers in bill cols
-    for col in bill_cols:
-        df = remove_outliers_percentile(df, col)
         
     # Capping bill and pay trend
     for trend in ["Bill Trend", "Pay Trend"]:
         lower_cap = df[trend].quantile(0.01)
         upper_cap = df[trend].quantile(0.99)
         df[trend] = df[trend].clip(lower=lower_cap, upper=upper_cap)
+        
+    # Multicollinearity Analysis (VIF)
+    features_for_vif = ["Limit Bal", "Age", "Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt", "Credit Utilization", 
+                        "Avg Monthly Utilization", "Bill Trend", "Pay Trend", "Age Limit Interaction"]
+
+    # Create a DataFrame with these features from your cleaned data.
+    X_numeric = df[features_for_vif]
+
+    # Create a DataFrame to store VIF results.
+    df_vif = pd.DataFrame(X_numeric.columns, columns=["Feature"])
+    #df_vif["feature"] = X_numeric.columns
+    df_vif["VIF"] = [variance_inflation_factor(X_numeric.values, i) for i in range(len(X_numeric.columns))]
         
     # Convert categorical variables to category type
     df[categorical_vars] = df[categorical_vars].astype("category")
@@ -80,7 +94,7 @@ def load_and_engineer_data(path):
     for col in log_cols:
         df[col] = np.log(df[col] + 1)
     
-    return df_raw, df, bill_cols, pay_amt_cols, categorical_vars
+    return df_raw, df, bill_cols, pay_amt_cols, categorical_vars, df_vif
 
 def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
     """
@@ -89,12 +103,15 @@ def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
     """
     bill_cols_extend = bill_cols + ["Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt"]
     other_numeric_vars = pay_amt_cols + ["Limit Bal", "Age", "Credit Utilization", "Avg Monthly Utilization", "Bill Trend", "Pay Trend", "Age Limit Interaction"]
+    ordinal_vars = ["Education", "Max Delay"]
+    nominal_vars = [var for var in categorical_vars if var not in ordinal_vars]
     
     ct = ColumnTransformer(
         transformers=[
             ("financial", PowerTransformer(method="yeo-johnson"), bill_cols_extend),
-            ("other_scaler", StandardScaler(), other_numeric_vars),
-            ("encoder", OneHotEncoder(drop=None, sparse_output=False), categorical_vars)
+            ("numeric", StandardScaler(), other_numeric_vars),
+            ("ordinal", OrdinalEncoder(), ordinal_vars),
+            ("nominal", OneHotEncoder(handle_unknown="ignore", sparse_output=False), nominal_vars)
             ],
         remainder="passthrough" 
         )
@@ -102,7 +119,7 @@ def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
 
 def preprocess_data(path):
     """Load data, feature engineer, and return both raw and processed data"""
-    df_raw, df_cleaned, bill_cols, pay_amt_cols, categorical_vars = load_and_engineer_data(path)
+    df_raw, df_cleaned, bill_cols, pay_amt_cols, categorical_vars, df_vif = load_and_engineer_data(path)
     
     # Separate target from features
     X = df_cleaned.drop("Default Payment Next Month", axis=1)
@@ -110,4 +127,4 @@ def preprocess_data(path):
     
     default_data = {"Raw": df_raw, "Cleaned": df_cleaned}
     
-    return default_data, X, Y, bill_cols, pay_amt_cols, categorical_vars
+    return default_data, X, Y, bill_cols, pay_amt_cols, categorical_vars, df_vif
