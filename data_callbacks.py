@@ -45,7 +45,7 @@ def register_data_callbacks(app, default_data, df_vif):
 
         return options, default_value
     
-    # Continuous feature distribution analysis
+    # Continuous feature distribution
     @app.callback(
         Output("histogram-graph", "figure"),
         Output("boxplot-graph", "figure"),
@@ -54,8 +54,8 @@ def register_data_callbacks(app, default_data, df_vif):
     )
     def update_continuous_distribution_plots(feature, version):
         df = default_data[version]
-        hist_fig = px.histogram(df, x=feature, nbins=30, title=f"{feature} Histogram ({version})")
-        box_fig = px.box(df, y=feature, title=f"{feature} Boxplot ({version})")
+        hist_fig = px.histogram(df, x=feature, nbins=30, title=f"{feature} ({version})")
+        box_fig = px.box(df, y=feature, title=f"{feature} ({version})")
         return hist_fig, box_fig
     
     # VIF analysis
@@ -81,54 +81,58 @@ def register_data_callbacks(app, default_data, df_vif):
         fig = generate_corr_heatmap(df_corr, features)
         return fig
     
-    # Categorical feature distribution analysis
+    # Categorical feature distribution
     @app.callback(
         Output("cat-pie-chart", "figure"),
-        Input("cat-feature-dropdown", "value"),
-        Input("data-version-toggle", "value")
-    )
-    def update_categorical_plots(feature, version):
-        df = default_data[version]
-        count_cat = df[feature].value_counts().reset_index(name="count")
-        title = f"{feature} Pie Chart ({version})"
-        
-        fig = px.pie(count_cat, 
-                     names=feature, 
-                     values="count", 
-                     title=title)
-        return fig
-    
-    @app.callback(
         Output("cat-bar-chart", "figure"),
         Input("cat-feature-dropdown", "value"),
         Input("data-version-toggle", "value")
     )
-    def update_categorical_bar(feature, version):
+    def update_categorical_charts(feature, version):
         df = default_data[version]
-        count_cat = df.groupby([feature, "Default Payment Next Month"]).size().reset_index(name="count")
-        count_cat["Default Payment Next Month"] = count_cat["Default Payment Next Month"].astype(str)
-        title = f"Default Count by {feature} ({version})"
         
-        cat_labels = {
-            "Sex": {"Sex": "Sex (1 = Male, 2 = Female)", "count": "Count"},
-            "Education": {"Education": "Education (1 = Grad. School, 2 = Uni, 3 = HS, 4 = Others, 5&6 = Unk.)", "count": "Count"},
-            "Marriage": {"Marriage": "Marriage (0 = Unk, 1 = Married, 2 = Single, 3 = Others)", "count": "Count"},
-            "Pay0": {"Pay0": "-2 = No cons., -1 = Paid, 0 = Use of revolving credit, 1 = Delay 1M, 2 = Delay 2M, 3 = Delay 3M, 4 = Delay 4M, 5 = Delay 5M, 6 = Delay 6M, 7 = Delay 7M, 8 = Delay 8M, 9 = Delay 9M", 
-                     "count": "Count"}
+        # Pie chart
+        count_pie = df[feature].value_counts().reset_index(name="count")
+        title_pie = f"{feature} ({version})"
+        
+        # Bar chart
+        count_bar = df.groupby([feature, "Default Payment Next Month"]).size().reset_index(name="count")
+        count_bar["Default Payment Next Month"] = count_bar["Default Payment Next Month"].astype(str)
+        title_bar = f"Default Count by {feature} ({version})"
+        
+        pie_labels = {
+            "Sex": {"1": "Male", "2": "Female"},
+            "Education": {"1": "Grad. School", "2": "Uni", "3": "HS", "4": "Others", "5&6": "Unknown"},
+            "Marriage": {"0": "Unknown", "1": "Married", "2": "Single", "3": "Others"},
+            "Max Delay": {"1": "Delay 1M", "2": "Delay 2M", "3": "Delay 3M", "4": "Delay 4M", "5": "Delay 5M", "6": "Delay 6M"}
             }
         
-        # Create keys Pay2 through Pay6
-        for i in range(2, 7):
-            cat_labels[f"Pay{i}"] = cat_labels["Pay0"].copy()
+        bar_labels = {
+            "Sex": {"Sex": "Sex (1 = Male, 2 = Female)", "count": "Count"},
+            "Education": {"Education": "Education (1 = Grad. School, 2 = Uni, 3 = HS, 4 = Others, 5&6 = Unk.)", "count": "Count"},
+            "Marriage": {"Marriage": "Marriage (0 = Unknown, 1 = Married, 2 = Single, 3 = Others)", "count": "Count"},
+            "Max Delay": {"Max Delay": "1 = Delay 1M, ... , 6 = Delay 6M", "count": "Count"}
+                    }
+        # Create keys for Pay0 through Pay6
+        for i in [0, 2, 3, 4, 5, 6]:
+            pie_labels[f"Pay{i}"] = {
+                "-2": "No consumption", "-1": "Paid in full", "0": "Use of revolving credit", 
+                "1": "Delay 1M", "2": "Delay 2M", "3": "Delay 3M", 
+                "4": "Delay 4M", "5": "Delay 5M", "6": "Delay 6M"}
+            bar_labels[f"Pay{i}"] = {
+                f"Pay{i}": "-2 = No consumption, -1 = Paid in full, 0 = Use of revolving credit, 1 = Delay 1M, ... , 8 = Delay 8M", 
+                "count": "Count"
+                }
         
-        fig = px.bar(count_cat, 
-                     x=feature, 
-                     y="count", 
-                     color="Default Payment Next Month", 
-                     barmode="group", 
-                     labels=cat_labels[feature], 
-                     title=title)
-        return fig
+        # Renaming the first column
+        count_pie = count_pie.rename(columns={count_pie.columns[0]: "category"})
+    
+        # Mapping values to the labels
+        count_pie["category"] = count_pie["category"].astype(str).map(pie_labels[feature])
+    
+        fig_pie = px.pie(count_pie, names="category", values="count", title=title_pie)
+        fig_bar = px.bar(count_bar, x=feature, y="count", color="Default Payment Next Month", barmode="group", labels=bar_labels[feature], title=title_bar)
+        return fig_pie, fig_bar
     
     # Categorical feature dropdown
     @app.callback(

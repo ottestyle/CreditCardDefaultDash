@@ -62,7 +62,7 @@ for model_name, model in models.items():
 ############
 
 # Initialize the app
-app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.FLATLY])
+app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.FLATLY], assets_folder="assets")
 
 ######################
 # Overall App Layout #

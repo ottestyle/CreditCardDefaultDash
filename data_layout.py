@@ -32,7 +32,7 @@ def data_layout(default_data):
                         ),
                     width=2
                     )
-                ], className="mb-4"),
+                ], className="mb-4"), 
             
             # Data preview and descriptive statistics
             dbc.Row([
@@ -73,7 +73,7 @@ def data_layout(default_data):
             dbc.Row([
                 dbc.Col(
                     dbc.Card([
-                        dbc.CardHeader("Distribution Analysis",
+                        dbc.CardHeader("Continuous Distribution Analysis",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
@@ -131,7 +131,7 @@ def data_layout(default_data):
             dbc.Row([
                 dbc.Col(
                     dbc.Card([
-                        dbc.CardHeader("Categorical Analysis - Bar Chart",
+                        dbc.CardHeader("Categorical Distribution Analysis",
                                        className="bg-primary text-white",
                                        style={
                                            "fontSize": "20px",
