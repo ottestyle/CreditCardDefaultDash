@@ -1,9 +1,9 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from dash import Input, Output, html
 import dash_bootstrap_components as dbc
 from sklearn.metrics import roc_curve
-
 
 def register_models_callbacks(app, eval_dict, y_test):
     # Update classification report and summary text
@@ -12,7 +12,7 @@ def register_models_callbacks(app, eval_dict, y_test):
         Output("classification-report", "columns"),
         Output("summary-class-report", "children"),
         Input("model-dropdown", "value")
-        )
+    )
     def update_class_report(selected_value):
         
         ##########################
@@ -22,7 +22,7 @@ def register_models_callbacks(app, eval_dict, y_test):
         
         # Prepare for the DataTable
         df_for_table = df_class_report.reset_index().rename(columns={"index": "Metric", "accuracy": "Accuracy", "macro avg": "Macro Avg", "weighted avg": "Weighted Avg"})
-        df_for_table = round(df_for_table, 2)
+        df_for_table = round(df_for_table, 3)
         
         # Convert to DataTable format
         table_data = df_for_table.to_dict("records")
@@ -51,32 +51,30 @@ def register_models_callbacks(app, eval_dict, y_test):
             html.P(f"{overall}")
             ],
             color="info"
-            )
+        )
         
-        #####################
-        # 3) Return outputs #
-        #####################
         return table_data, table_columns, summary_text
         
     # Update confusion matrix
     @app.callback(
         Output("conf-matrix-plot", "figure"),
         Input("model-dropdown", "value")
-        )
+    )
     def update_conf_matrix(selected_value):
         
-        fig = px.imshow(eval_dict[selected_value]["confusion_matrix"],
-                        text_auto=True,
-                        labels=dict(x="Predicted", y="Actual"),
-                        x=["Not Default (pred)", "Default (pred)"], # Class labels on x-axis
-                        y=["Not Default (actual)", "Default (actual)"], # ... y-axis
-                        color_continuous_scale="Blues")
+        cm = eval_dict[selected_value]["confusion_matrix"]
         
-        fig.update_layout(coloraxis_showscale=False)
-        
-        # Ensures axis ticks appear only at 0 and 1, rather than fractional values
-        fig.update_xaxes(tickmode="array", tickvals=[0, 1], ticktext=["0", "1"])
-        fig.update_yaxes(tickmode="array", tickvals=[0, 1], ticktext=["0", "1"])
+        heatmap = go.Heatmap(
+            z=cm,
+            x=["Predicted Negative", "Predicted Positive"],
+            y=["Actual Negative", "Actual Positive"],
+            colorscale="Blues",
+            showscale=False,
+            text=cm,
+            texttemplate="%{text}"
+            )
+        fig = go.Figure(data=[heatmap])
+        fig.update_layout(template="plotly_white")
         
         return fig
 
@@ -85,13 +83,13 @@ def register_models_callbacks(app, eval_dict, y_test):
         Output("roc-curve-header", "children"),
         Output("roc-curve-model", "figure"),
         Input("model-dropdown", "value")
-        )
+    )
     def update_roc_curve_model(selected_value):
         
         # False positive rate, true positive rate
         fpr, tpr, thresholds = roc_curve(y_test, eval_dict[selected_value]["y_proba"])
         score = eval_dict[selected_value]["auc_score"]
-        title = f"ROC Curve (AUC={score:.4f})"
+        title = f"ROC Curve (AUC={score:.3f})"
         
         fig = px.area(x=fpr,
                       y=tpr,
@@ -110,7 +108,7 @@ def register_models_callbacks(app, eval_dict, y_test):
     @app.callback(
         Output("feature-model", "figure"),
         Input("model-dropdown", "value")
-        )
+    )
     def update_feature_importance(selected_value):
         
         if selected_value == "Logistic Regression":

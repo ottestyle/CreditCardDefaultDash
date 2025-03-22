@@ -22,6 +22,7 @@ from data_processing import preprocess_data, build_preprocessing_pipeline
 from evaluation import evaluate_model
 from layouts.data_layout import data_layout
 from layouts.models_layout import models_layout
+from layouts.model_comparison_layout import model_comparison_layout
 from callbacks import register_callbacks
 
 # Preprocess data: raw vs. cleaned, features and target
@@ -146,8 +147,7 @@ def display_page(pathname):
     elif pathname == "/models":
         return models_layout(models)
     elif pathname == "/model-comparison":
-        return html.Div([
-            html.H3("This is the model comparisons page", style={"textAlign": "center"})])
+        return model_comparison_layout(eval_dict)
     else:
         return html.Div([
             html.H3("404: Page not found", style={"textAlign": "center"})])

@@ -76,16 +76,25 @@ def load_and_engineer_data(path):
         df[trend] = df[trend].clip(lower=lower_cap, upper=upper_cap)
         
     # Multicollinearity Analysis (VIF)
-    features_for_vif = ["Limit Bal", "Age", "Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt", "Credit Utilization", 
-                        "Avg Monthly Utilization", "Bill Trend", "Pay Trend", "Age Limit Interaction"]
-
-    # Create a DataFrame with these features from your cleaned data.
-    X_numeric = df[features_for_vif]
-
-    # Create a DataFrame to store VIF results.
-    df_vif = pd.DataFrame(X_numeric.columns, columns=["Feature"])
-    #df_vif["feature"] = X_numeric.columns
-    df_vif["VIF"] = [variance_inflation_factor(X_numeric.values, i) for i in range(len(X_numeric.columns))]
+    features_for_vif = [
+        "Limit Bal", "Age", "Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt",
+        "Credit Utilization", "Avg Monthly Utilization", "Bill Trend", "Pay Trend",
+        "Age Limit Interaction", "Max Delay",
+        "Bill Amt1", "Bill Amt2", "Bill Amt3", "Bill Amt4", "Bill Amt5", "Bill Amt6",
+        "Pay Amt1", "Pay Amt2", "Pay Amt3", "Pay Amt4", "Pay Amt5", "Pay Amt6",
+        "Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6",
+        "Sex", "Education", "Marriage"
+        ]
+    
+    X_vif = df[features_for_vif]
+    
+    # Standardize features to ensure comparability in VIF calculations
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_vif)
+        
+    # VIF results
+    df_vif = pd.DataFrame(X_vif.columns, columns=["Feature"])
+    df_vif["VIF"] = [variance_inflation_factor(X_scaled, i) for i in range(len(X_vif.columns))]
         
     # Convert categorical variables to category type
     df[categorical_vars] = df[categorical_vars].astype("category")

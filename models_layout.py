@@ -1,3 +1,4 @@
+# app/layouts/models_layout.py
 import dash_bootstrap_components as dbc
 from dash import dcc, dash_table, html
 
@@ -9,12 +10,11 @@ def models_layout(models):
         children=[
             
             dbc.Row([
+                dbc.Col(html.H2("Results"), width=12),
                 dbc.Col(
                     dbc.Card(
                         dbc.CardBody([
-                            
-                            dbc.Label("Choose model",
-                                      className="label-style"),
+                            dbc.Label("Choose Model", className="label-style"),
                             dcc.Dropdown(
                                 id="model-dropdown",
                                 options=list(models.keys()),
@@ -27,7 +27,9 @@ def models_layout(models):
                         ),
                     width=2
                     ),
-                
+                ], className="mb-4"),
+            
+            dbc.Row([
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader("Classification Report",
@@ -58,9 +60,8 @@ def models_layout(models):
                             ]),
                         ],
                         className="h-100"),
-                    
                     ],
-                    width=5
+                    width=6
                     ),
                 
                 dbc.Col([
@@ -76,12 +77,11 @@ def models_layout(models):
                             ])
                         ],
                         className="h-100")
-                    ], width=5
+                    ], width=6
                     )
-                ]),
+                ], className="mb-4"),
             
-            dbc.Row([
-                
+            dbc.Row([    
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader(id="roc-curve-header",
@@ -95,7 +95,7 @@ def models_layout(models):
                             ])
                         ],
                         className="h-100")
-                    ], width={"size": 5, "offset": 2}
+                    ], width=6
                     ),
                 
                 dbc.Col([
@@ -112,6 +112,6 @@ def models_layout(models):
                             ])
                         ],
                         className="h-100")
-                ], width=5)
-            ])
-            ])
+                ], width=6)
+            ], className="mb-4")
+        ])

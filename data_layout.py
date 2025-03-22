@@ -49,7 +49,7 @@ def data_layout(default_data):
                             data=[],
                             columns=[],
                             style_table={
-                                "overflowX": "auto", 
+                                "overflowX": "auto",
                                 "border": "1px solid #ccc"
                                 },
                             style_cell={
@@ -107,7 +107,24 @@ def data_layout(default_data):
                                            }),
                         dbc.CardBody(dash_table.DataTable(
                             id="vif-table",
-                            style_table={"overflowX": "auto"},
+                            data=[],
+                            columns=[],
+                            style_table={
+                                "maxHeight": "450px",
+                                "overflowY": "auto",
+                                "border": "1px solid #ccc"
+                                },
+                            style_cell={
+                                "textAlign": "center",
+                                "border": "1px solid #ccc",
+                                "padding": "5px"
+                                },
+                            style_header={
+                                "backgroundColor": "gray",
+                                "color": "white",
+                                "border": "1px solid #ccc",
+                                "fontWeight": "bold"
+                                },
                             style_data_conditional=[{"if": {"filter_query": "{VIF} > 10"}, "backgroundColor": "#FFCCCC"}]
                         ))
                     ]),

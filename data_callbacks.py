@@ -66,8 +66,9 @@ def register_data_callbacks(app, default_data, df_vif):
     )
     def update_vif_table(version):
         # Use the cleaned data for VIF
-        cols = [{"name": col, "id": col} for col in df_vif.columns]
-        data = df_vif.to_dict("records")
+        df = round(df_vif,2)
+        cols = [{"name": col, "id": col} for col in df.columns]
+        data = df.to_dict("records")
         return data, cols
     
     # Correlation heatmap
