@@ -46,7 +46,7 @@ def load_and_engineer_data(path):
     pay_amt_cols = [f"Pay Amt{i}" for i in range(1,7)]
     categorical_vars = ["Sex", "Education", "Marriage", "Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6", "Max Delay"]
     delay_cols = ["Pay0", "Pay2", "Pay3", "Pay4", "Pay5", "Pay6"]
-    log_cols = pay_amt_cols + ["Limit Bal", "Credit Utilization", "Avg Monthly Utilization", "Age Limit Interaction"]
+    log_cols = ["Limit Bal", "Credit Utilization"]
     
     # Remove outliers in bill cols
     for col in bill_cols:
@@ -92,32 +92,50 @@ def load_and_engineer_data(path):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X_vif)
         
-    # VIF results
+    # VIF first results
     df_vif = pd.DataFrame(X_vif.columns, columns=["Feature"])
     df_vif["VIF"] = [variance_inflation_factor(X_scaled, i) for i in range(len(X_vif.columns))]
-        
-    # Convert categorical variables to category type
-    df[categorical_vars] = df[categorical_vars].astype("category")
+    
+    # Addressing the interaction collinearity by centering
+    df["Age Limit Interaction"] = (df["Age"] - df["Age"].mean()) * (df["Limit Bal"] - df["Limit Bal"].mean())
+    
+    columns_to_drop = [
+        "Default Payment Next Month", "Avg Bill Amt", "Avg Pay Amt", 
+        "Bill Amt1", "Bill Amt2", "Bill Amt3", "Bill Amt4", "Bill Amt5", "Bill Amt6",
+        "Pay Amt1", "Pay Amt2", "Pay Amt3", "Pay Amt4", "Pay Amt5", "Pay Amt6",
+        "Avg Monthly Utilization"
+    ]
+    
+    X_vif_reduced = df.drop(columns=columns_to_drop, errors="ignore")
+    
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_vif_reduced)
+    
+    # VIF second results
+    df_vif = pd.DataFrame(X_vif_reduced.columns, columns=["Feature"])
+    df_vif["VIF"] = [variance_inflation_factor(X_scaled, i) for i in range(len(X_vif_reduced.columns))]
+    
+    # Removing redudant features
+    df = df.drop(columns=columns_to_drop[1:])
     
     # Log transformation of right skewed distributions
     for col in log_cols:
         df[col] = np.log(df[col] + 1)
     
-    return df_raw, df, bill_cols, pay_amt_cols, categorical_vars, df_vif
+    return df_raw, df, categorical_vars, df_vif
 
-def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
+def build_preprocessing_pipeline(categorical_vars):
     """
     Preprocessing pipeline to transform financial variables and encode categoricals.
     Only fitted to the training data
     """
-    bill_cols_extend = bill_cols + ["Avg Bill Amt", "Avg Pay Amt", "Total Bill Amt"]
-    other_numeric_vars = pay_amt_cols + ["Limit Bal", "Age", "Credit Utilization", "Avg Monthly Utilization", "Bill Trend", "Pay Trend", "Age Limit Interaction"]
+    other_numeric_vars = ["Limit Bal", "Age", "Credit Utilization", "Bill Trend", "Pay Trend", "Age Limit Interaction"]
     ordinal_vars = ["Education", "Max Delay"]
     nominal_vars = [var for var in categorical_vars if var not in ordinal_vars]
     
     ct = ColumnTransformer(
         transformers=[
-            ("financial", PowerTransformer(method="yeo-johnson"), bill_cols_extend),
+            ("financial", PowerTransformer(method="yeo-johnson"), ["Total Bill Amt"]),
             ("numeric", StandardScaler(), other_numeric_vars),
             ("ordinal", OrdinalEncoder(), ordinal_vars),
             ("nominal", OneHotEncoder(handle_unknown="ignore", sparse_output=False), nominal_vars)
@@ -128,7 +146,7 @@ def build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars):
 
 def preprocess_data(path):
     """Load data, feature engineer, and return both raw and processed data"""
-    df_raw, df_cleaned, bill_cols, pay_amt_cols, categorical_vars, df_vif = load_and_engineer_data(path)
+    df_raw, df_cleaned, categorical_vars, df_vif = load_and_engineer_data(path)
     
     # Separate target from features
     X = df_cleaned.drop("Default Payment Next Month", axis=1)
@@ -136,4 +154,4 @@ def preprocess_data(path):
     
     default_data = {"Raw": df_raw, "Cleaned": df_cleaned}
     
-    return default_data, X, Y, bill_cols, pay_amt_cols, categorical_vars, df_vif
+    return default_data, X, Y, categorical_vars, df_vif

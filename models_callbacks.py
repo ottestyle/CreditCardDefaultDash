@@ -134,4 +134,6 @@ def register_models_callbacks(app, eval_dict, y_test):
                      orientation="h",
                      barmode="group")
         
+        fig.update_yaxes(autorange="reversed")
+        
         return fig

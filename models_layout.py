@@ -10,7 +10,7 @@ def models_layout(models):
         children=[
             
             dbc.Row([
-                dbc.Col(html.H2("Results"), width=12),
+                dbc.Col(html.H2("Performance"), width=12),
                 dbc.Col(
                     dbc.Card(
                         dbc.CardBody([

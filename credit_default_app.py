@@ -26,13 +26,13 @@ from layouts.model_comparison_layout import model_comparison_layout
 from callbacks import register_callbacks
 
 # Preprocess data: raw vs. cleaned, features and target
-default_data, X, Y, bill_cols, pay_amt_cols, categorical_vars, df_vif = preprocess_data(path)
+default_data, X, Y, categorical_vars, df_vif = preprocess_data(path)
 
 # Train and test sets (80/20 split)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
 
 # Build and fit the transformation pipeline on the training set
-pipeline = build_preprocessing_pipeline(bill_cols, pay_amt_cols, categorical_vars)
+pipeline = build_preprocessing_pipeline(categorical_vars)
 X_train_transformed = pipeline.fit_transform(X_train)
 
 # Use the fitted pipeline to transform the test set
@@ -57,7 +57,6 @@ eval_dict = {}
 for model_name, model in models.items():
     eval_dict[model_name] = evaluate_model(model, X_train_transformed, X_test_transformed, y_train, y_test, model_name)
 
-#%%
 ############
 # Dash App #
 ############

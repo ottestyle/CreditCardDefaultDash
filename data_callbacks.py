@@ -30,11 +30,10 @@ def register_data_callbacks(app, default_data, df_vif):
     )
     def update_continuous_feature_dropdown(version):
         features = {
-            "Raw": ["Limit Bal", "Age", "Bill Amt1", "Bill Amt2", "Bill Amt3", "Bill Amt4", "Bill Amt5", 
-                                  "Bill Amt6", "Pay Amt1", "Pay Amt2", "Pay Amt3", "Pay Amt4", "Pay Amt5", "Pay Amt6"],
-            "Cleaned": ["Limit Bal", "Age", "Bill Amt1", "Bill Amt2", "Bill Amt3", "Bill Amt4", "Bill Amt5", "Bill Amt6", "Pay Amt1",
-                              "Pay Amt2", "Pay Amt3", "Pay Amt4", "Pay Amt5", "Pay Amt6", "Total Bill Amt", "Credit Utilization",
-                              "Avg Monthly Utilization", "Bill Trend", "Age Limit Interaction"]
+            "Raw": ["Limit Bal", "Age", "Bill Amt1", "Bill Amt2", "Bill Amt3", "Bill Amt4", "Bill Amt5",
+                    "Bill Amt6", "Pay Amt1", "Pay Amt2", "Pay Amt3", "Pay Amt4", "Pay Amt5", "Pay Amt6"],
+            "Cleaned": ["Limit Bal", "Age", "Total Bill Amt", "Credit Utilization",
+                        "Bill Trend", "Pay Trend", "Age Limit Interaction"]
         }
         
         # Convert to dropdown options

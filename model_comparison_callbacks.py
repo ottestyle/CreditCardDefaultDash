@@ -54,7 +54,7 @@ def register_model_comparison_callbacks(app, eval_dict, y_test):
         for col_index, model_name in enumerate(models):
             metrics = eval_dict[model_name]
             cm = metrics["confusion_matrix"]
-            heatmap = go.Heatmap(
+            trace = go.Heatmap(
                 z=cm,
                 x=["Predicted Negative", "Predicted Positive"],
                 y=["Actual Negative", "Actual Positive"],
@@ -63,7 +63,7 @@ def register_model_comparison_callbacks(app, eval_dict, y_test):
                 text=cm,
                 texttemplate="%{text}"
             )
-            fig.add_trace(heatmap, row=1, col=col_index+1)
+            fig.add_trace(trace, row=1, col=col_index+1)
 
         fig.update_layout(template="plotly_white")
         return fig
